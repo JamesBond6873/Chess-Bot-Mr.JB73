@@ -151,10 +151,12 @@ public class MyBot : IChessBot
                     return best;
                 alpha = Math.Max(alpha, best);
             }
+
             else if (!board.IsInCheck())
             {
-                // Null Move Pruning
+                if (intDepth <= 6 && eval - 80 * intDepth >= beta) return eval;
                 
+                // Null Move Pruning
                 if (do_null && intDepth >= 2)
                 {
                     do_null = false;
