@@ -6,13 +6,13 @@ It was created to compete in the Chess Challenge by Sebastian Lague: [Chess Codi
 # Features
 The bot has the following features:
 
-- Eval:
+- **Eval**:
 
   Piece Square Table (Pesto)
 
   Double Pawn Detection
 
-- Search:
+- **Search**:
 
   Negamax
 
@@ -30,7 +30,7 @@ The bot has the following features:
   
     -> Reverse Futility Pruning
   
-- Move Sorter/Scorer:
+- **Move Sorter/Scorer**:
 
   Transposition Tables
 
