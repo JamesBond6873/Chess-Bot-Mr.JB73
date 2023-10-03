@@ -1,5 +1,5 @@
 # Chess-Bot-Mr.JB73
-This is my Chess Bot: Mr.JB73
+This is my Chess Bot: Mr. JB73
 
 It was created to compete in the Chess Challenge by Sebastian Lague: [Chess Coding Challenge](https://youtu.be/iScy18pVR58)
 
