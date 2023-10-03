@@ -1,4 +1,11 @@
-﻿using ChessChallenge.API;
+﻿/*
+-----------------------{|---()---|}-----------------------
+             Bot Created By James Bond 73
+     Special Thanks To WhiteMouse for the help given
+       Inspiration taken from Tyrant and JacquesRW
+-----------------------{|---()---|}-----------------------
+*/
+using ChessChallenge.API;
 using System;
 using System.Linq;
 
@@ -10,6 +17,8 @@ public class MyBot : IChessBot
     private readonly Move[] killers = new Move[2048];
     private readonly int[] moveScores = new int[218];
 
+
+    // Transposition Tables
     struct Transposition
     {
         public ulong zobristHash;
@@ -19,9 +28,12 @@ public class MyBot : IChessBot
         public byte flag;
     };
 
+
+    // Transposition Table Initialiser
     private Transposition[] m_TPTable = new Transposition[0x800000];
 
 
+    // Piece Value Counter
     public int getPstVal(int psq)
     {
         return (int)(((psts[psq / 10] >> (6 * (psq % 10))) & 63) - 20) * 8;
@@ -30,55 +42,43 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
-        int movesPruned; // #DEBUG
-        int nodesSearched; // #DEBUG
-        int TTuses; // #DEBUG
-        int nullMovePrunned; // #DEBUG
-        int futilityMovePrunned; // #DEBUG
-        movesPruned = 0; // #DEBUG
-        nodesSearched = 0; // #DEBUG
-        TTuses = 0; // #DEBUG
-        nullMovePrunned = 0; // #DEBUG
-        futilityMovePrunned = 0; // #DEBUG
-
         Move bestmoveRoot = Move.NullMove;
+
 
         // Reset history tables
         var historyHeuristics = new int[2, 7, 64];
 
+
+        // Reset Null Move Pruning var
         bool do_null = true;
 
+
+        // Iterative Depening Vars
         int intThinkTime = timer.MillisecondsRemaining / 30;
         int intPlyDepth = 2;
 
 
+        // Iterative Deepening
         while (intPlyDepth < 90)
         {
-
             int rootValue = Negamax(-30000, 30000, intPlyDepth, 0);
 
             if (timer.MillisecondsElapsedThisTurn >= intThinkTime)
             {
-                Console.WriteLine("out of time");// #DEBUG
                 break;
             }
 
             if (rootValue > 99000)
             {
-                Console.WriteLine("root value: " + rootValue.ToString());// #DEBUG
                 break;// Mate found, no point in searching deeper
             }
 
             intPlyDepth += 1;
 
         }
-
-        int intThinkDuration = timer.MillisecondsElapsedThisTurn;// #DEBUG
-        Console.WriteLine($"| Depth: {intPlyDepth} | Nodes Searched: {nodesSearched} | Moves Prunned: {movesPruned} | Null Moves Prunned: {nullMovePrunned} | Futility Moves Prunned: {futilityMovePrunned} | TT Uses: {TTuses} | Time Spent: {intThinkDuration} ms | KNPS: {nodesSearched / (intThinkDuration + 1)} |"); // #DEBUG
-
         return bestmoveRoot.IsNull ? board.GetLegalMoves()[0] : bestmoveRoot;
 
-
+        // Eval based on Piece Square Tables
         int Evaluate()
         {
             int mg = 0, eg = 0, phase = 0;
@@ -112,25 +112,28 @@ public class MyBot : IChessBot
                 eg = -eg;
             }
 
-            //Console.WriteLine((mg * phase + eg * (24 - phase)) / 24 * (board.IsWhiteToMove ? 1 : -1)); // #DEBUG
             return (mg * phase + eg * (24 - phase)) / 24 * (board.IsWhiteToMove ? 1 : -1);
         }
 
 
         int Negamax(int alpha, int beta, int intDepth, int ply)
         {
+            // Vars initializer
             ulong key = board.ZobristKey;
             bool qsearch = intDepth <= 0;
             bool notRoot = ply > 0;
             int best = -99_999_999;
             int movesScored = 0;
 
+
             // Check for repetition
             if (notRoot && board.IsRepeatedPosition())
                 return 0;
 
+
             // Check Extensions
             if (board.IsInCheck()) intDepth++;
+
 
             // TT Checks
             ref Transposition transposition = ref m_TPTable[board.ZobristKey & 0x7FFFFF];
@@ -141,12 +144,12 @@ public class MyBot : IChessBot
                     || transposition.flag == 3 && transposition.evaluation <= alpha // upper bound, fail low
             ))
             {
-                TTuses++; // #DEBUG
                 return transposition.evaluation;
             }
 
+            // Static Evaluation
             int eval = Evaluate();
-            nodesSearched++; // #DEBUG
+
 
             // Qsearch
             if (qsearch)
@@ -159,8 +162,10 @@ public class MyBot : IChessBot
 
             else if (!board.IsInCheck())
             {
+                // Reverse Futility Pruning
                 if (intDepth <= 6 && eval - 80 * intDepth >= beta) return eval;
                 
+
                 // Null Move Pruning
                 if (do_null && intDepth >= 2)
                 {
@@ -171,7 +176,6 @@ public class MyBot : IChessBot
                     board.UndoSkipTurn();
                     if (score >= beta)
                     {
-                        nullMovePrunned++; // #DEBUG
                         return score;
                     }
                 }
@@ -184,6 +188,7 @@ public class MyBot : IChessBot
             Span<Move> moveSpan = stackalloc Move[218];
             board.GetLegalMovesNonAlloc(ref moveSpan, qsearch && !board.IsInCheck());
 
+            // Move Scorer
             foreach (Move move in moveSpan)
                 moveScores[movesScored++] = -(
                 // Hash move
@@ -198,13 +203,16 @@ public class MyBot : IChessBot
                 // History
                 historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index]);
 
+            // Move Sorter
             moveScores.AsSpan(0, moveSpan.Length)
                 .Sort(moveSpan);
+
 
             Move bestMove = Move.NullMove;
             int startingAlpha = alpha;
 
-            // Search moves
+
+            // Negamax / Search moves / Main Loop
             for (int i = 0; i < moveSpan.Length; i++)
             {
                 if (timer.MillisecondsElapsedThisTurn >= timer.MillisecondsRemaining / 30) return 98888;
@@ -223,9 +231,10 @@ public class MyBot : IChessBot
 
                     alpha = Math.Max(alpha, score);
 
+                    // AB Pruning
                     if (alpha >= beta)
                     {
-                        movesPruned++; // #DEBUG
+                        // Add Killer moves and History Heuristics
                         if (!move.IsCapture)
                         {
                             historyHeuristics[ply & 1, (int)move.MovePieceType, move.TargetSquare.Index] += intDepth * intDepth;
@@ -238,9 +247,12 @@ public class MyBot : IChessBot
                 }
             }
 
-            // (Check/Stale)mate
+
+            // Checkmate Detection and Draw Detection
             if (!qsearch && moveSpan.Length == 0) return board.IsInCheck() ? -99999 + ply : 0;
 
+
+            // Transposition Table Inputs
             transposition.evaluation = best;
             transposition.zobristHash = key;
             transposition.move = bestMove;
